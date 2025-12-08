@@ -1,0 +1,168 @@
+name: Engine Bridge 🚀 Create Release
+
+on:
+  repository_dispatch:
+    types: [create-release]
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type (optional, defaults to patch)'
+        required: false
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+
+jobs:
+  release:
+    runs-on: warp-ubuntu-latest-arm64-2x
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Read current version
+        id: version
+        run: |
+          CURRENT_VERSION=$(grep -E '^version\s*=' build.gradle.kts | sed -E "s/.*version\s*=\s*[\"']([^\"']+)[\"'].*/\1/")
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+
+      - name: Determine version bump type
+        id: version-type
+        run: |
+          # Check if triggered by repository_dispatch
+          if [ "${{ github.event_name }}" == "repository_dispatch" ]; then
+            VERSION_TYPE="${{ github.event.client_payload.version_type }}"
+          else
+            VERSION_TYPE="${{ github.event.inputs.version_type }}"
+          fi
+          
+          # Default to patch if not specified
+          if [ -z "$VERSION_TYPE" ]; then
+            VERSION_TYPE="patch"
+          fi
+          
+          echo "type=$VERSION_TYPE" >> $GITHUB_OUTPUT
+          echo "Version bump type: $VERSION_TYPE"
+
+      - name: Bump version
+        id: bump
+        run: |
+          CURRENT_VERSION="${{ steps.version.outputs.current }}"
+          VERSION_TYPE="${{ steps.version-type.outputs.type }}"
+          
+          IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
+          MAJOR=${VERSION_PARTS[0]}
+          MINOR=${VERSION_PARTS[1]}
+          PATCH=${VERSION_PARTS[2]}
+          
+          case $VERSION_TYPE in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+
+      - name: Update version in build.gradle.kts
+        run: |
+          NEW_VERSION="${{ steps.bump.outputs.new }}"
+          sed -i "s/version = \".*\"/version = \"$NEW_VERSION\"/" build.gradle.kts
+          echo "Updated build.gradle.kts to version $NEW_VERSION"
+
+      - name: Commit and push version change
+        run: |
+          git add build.gradle.kts
+          git commit -m "[PV-0] chore: bump version to ${{ steps.bump.outputs.new }} [skip ci]"
+          git push origin HEAD:master
+
+      - name: Create tag
+        run: |
+          NEW_VERSION="${{ steps.bump.outputs.new }}"
+          git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
+          git push origin "v$NEW_VERSION"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Build project
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: build
+
+      - name: Find JAR file
+        id: find-jar
+        run: |
+          JAR_FILE=$(find build/libs -name "*.jar" -not -name "*-sources.jar" -not -name "*-javadoc.jar" | head -n 1)
+          echo "jar_file=$JAR_FILE" >> $GITHUB_OUTPUT
+          echo "Found JAR: $JAR_FILE"
+
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          NEW_VERSION="${{ steps.bump.outputs.new }}"
+          CURRENT_VERSION="${{ steps.version.outputs.current }}"
+          PREVIOUS_TAG="v$CURRENT_VERSION"
+          
+          # Check if previous tag exists
+          if git rev-parse "$PREVIOUS_TAG" >/dev/null 2>&1; then
+            # Get commits since previous tag (excluding version bump commits)
+            COMMITS=$(git log "$PREVIOUS_TAG"..HEAD --pretty=format:"- %s (%h)" --no-merges | grep -v "\[skip ci\]" | grep -v "bump version" || echo "")
+          else
+            # If no previous tag, get last 20 commits
+            COMMITS=$(git log -20 --pretty=format:"- %s (%h)" --no-merges | grep -v "\[skip ci\]" | grep -v "bump version" || echo "")
+          fi
+          
+          # Build release notes
+          NOTES="## Release v$NEW_VERSION
+          
+          ### Changes
+          $COMMITS
+          
+          ### Version
+          - Bumped from $CURRENT_VERSION to $NEW_VERSION"
+          
+          # Save to file for gh release create
+          echo "$NOTES" > release_notes.md
+          echo "Generated release notes:"
+          echo "$NOTES"
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          gh release create "v${{ steps.bump.outputs.new }}" \
+            --title "Release v${{ steps.bump.outputs.new }}" \
+            --notes-file release_notes.md \
+            "${{ steps.find-jar.outputs.jar_file }}"
+

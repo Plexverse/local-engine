@@ -1,0 +1,44 @@
+name: Engine Bridge 🔄 Auto Release on Master
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  trigger-release:
+    runs-on: warp-ubuntu-latest-arm64-2x
+    permissions:
+      contents: write
+      actions: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          fetch-depth: 2
+
+      - name: Check if should trigger release
+        id: should-trigger
+        run: |
+          # Skip if commit message contains [skip ci] or is a version bump commit
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          if echo "$COMMIT_MSG" | grep -qE "\[skip ci\]|bump version"; then
+            echo "trigger=false" >> $GITHUB_OUTPUT
+            echo "Skipping release trigger: commit message indicates skip"
+          else
+            echo "trigger=true" >> $GITHUB_OUTPUT
+            echo "Will trigger release"
+          fi
+
+      - name: Trigger release
+        if: steps.should-trigger.outputs.trigger == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/dispatches \
+            -X POST \
+            -f event_type='create-release' \
+            --raw-field 'client_payload[version_type]=patch'
+
