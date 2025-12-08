@@ -1,4 +1,4 @@
-package net.plexverse.enginebridge.modules.matchmaker;
+package net.plexverse.enginebridge.modules.queuing;
 
 import com.mineplex.studio.sdk.modules.queuing.QueuingModule;
 import com.mineplex.studio.sdk.modules.queuing.GetQueueStatusResponse;
@@ -16,7 +16,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Local implementation of MatchmakerModule.
+ * Local implementation of QueuingModule.
  * Provides a basic in-memory queue system for local development.
  * 
  * Note: This is a simplified implementation that does not support actual matchmaking
@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j
 @RequiredArgsConstructor
-public class MatchmakerModuleImpl implements QueuingModule {
+public class QueuingModuleImpl implements QueuingModule {
     
     private final JavaPlugin plugin;
     
@@ -35,8 +35,8 @@ public class MatchmakerModuleImpl implements QueuingModule {
     
     @Override
     public void setup() {
-        log.info("MatchmakerModule initialized with local in-memory queue (no proxy support)");
-        log.warn("MatchmakerModule is using a simplified local implementation. " +
+        log.info("QueuingModule initialized with local in-memory queue (no proxy support)");
+        log.warn("QueuingModule is using a simplified local implementation. " +
                 "Actual matchmaking and proxy connections are not supported.");
     }
     
@@ -44,7 +44,7 @@ public class MatchmakerModuleImpl implements QueuingModule {
     public void teardown() {
         playerQueues.clear();
         queueJoinTimes.clear();
-        log.info("MatchmakerModule torn down");
+        log.info("QueuingModule torn down");
     }
     
     @Override
