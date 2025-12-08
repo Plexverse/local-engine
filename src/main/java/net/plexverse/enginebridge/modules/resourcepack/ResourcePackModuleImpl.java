@@ -33,6 +33,7 @@ import java.util.UUID;
 public class ResourcePackModuleImpl implements ResourcePackModule {
     
     private static final Path RESOURCE_PACK_DIR = Paths.get("config", "resource-packs");
+    private static final boolean DEFAULT_HTTP_SERVER_ENABLED = false;
     private static final String DEFAULT_HTTP_BIND_HOST = "0.0.0.0";
     private static final String DEFAULT_HTTP_URL_HOST = "localhost";
     private static final int DEFAULT_HTTP_PORT = 8080;
@@ -40,6 +41,7 @@ public class ResourcePackModuleImpl implements ResourcePackModule {
     private final JavaPlugin plugin;
     private final Map<String, ResourcePack> resourcePacks = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     private LocalResourcePackHttpServer httpServer;
+    private boolean httpServerEnabled;
     private String httpBindHost;
     private String httpUrlHost;
     private int httpPort;
@@ -112,29 +114,34 @@ public class ResourcePackModuleImpl implements ResourcePackModule {
     @Override
     public void setup() {
         final FileConfiguration config = plugin.getConfig();
+        httpServerEnabled = config.getBoolean("modules.resourcepack.http-server-enabled", DEFAULT_HTTP_SERVER_ENABLED);
         httpBindHost = config.getString("modules.resourcepack.http-bind-host", DEFAULT_HTTP_BIND_HOST);
         httpUrlHost = config.getString("modules.resourcepack.http-url-host", DEFAULT_HTTP_URL_HOST);
         httpPort = config.getInt("modules.resourcepack.http-port", DEFAULT_HTTP_PORT);
         
-        try {
-            // Start HTTP server to serve resource packs
-            // Bind to httpBindHost (0.0.0.0 for Docker) but use httpUrlHost in URLs
-            httpServer = new LocalResourcePackHttpServer(new InetSocketAddress(httpBindHost, httpPort), RESOURCE_PACK_DIR);
-            httpServer.start();
-            log.info("Started resource pack HTTP server on {}:{} (URLs will use {}:{})", httpBindHost, httpPort, httpUrlHost, httpPort);
-            
-            // Load resource packs from directory
-            loadResourcePacks();
-            
-            log.info("Loaded {} resource pack(s)", resourcePacks.size());
-        } catch (Exception e) {
-            log.error("Failed to start resource pack HTTP server", e);
+        if (httpServerEnabled) {
+            try {
+                // Start HTTP server to serve resource packs
+                // Bind to httpBindHost (0.0.0.0 for Docker) but use httpUrlHost in URLs
+                httpServer = new LocalResourcePackHttpServer(new InetSocketAddress(httpBindHost, httpPort), RESOURCE_PACK_DIR);
+                httpServer.start();
+                log.info("Started resource pack HTTP server on {}:{} (URLs will use {}:{})", httpBindHost, httpPort, httpUrlHost, httpPort);
+            } catch (Exception e) {
+                log.error("Failed to start resource pack HTTP server", e);
+            }
+        } else {
+            log.info("Resource pack HTTP server is disabled. Resource packs will not be served automatically.");
         }
+        
+        // Load resource packs from directory
+        loadResourcePacks();
+        
+        log.info("Loaded {} resource pack(s)", resourcePacks.size());
     }
     
     @Override
     public void teardown() {
-        if (httpServer != null) {
+        if (httpServerEnabled && httpServer != null) {
             try {
                 httpServer.stop(0);
                 log.info("Stopped resource pack HTTP server");
