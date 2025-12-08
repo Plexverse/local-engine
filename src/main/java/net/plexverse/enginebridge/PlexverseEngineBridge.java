@@ -6,9 +6,12 @@ import lombok.extern.slf4j.Slf4j;
 import net.plexverse.enginebridge.modules.LocalModuleManagerImpl;
 import net.plexverse.enginebridge.modules.ModuleManager;
 import net.plexverse.enginebridge.modules.RemoteModuleManagerImpl;
+import net.plexverse.enginebridge.util.ModuleScanner;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.List;
 
 @Slf4j
 public class PlexverseEngineBridge extends JavaPlugin {
@@ -72,12 +75,35 @@ public class PlexverseEngineBridge extends JavaPlugin {
                 log.warn("Failed to get MineplexModuleManager from StudioEngine, falling back to LocalModuleManagerImpl: {}", e.getMessage());
                 PlexverseEngineBridge.moduleManager = new LocalModuleManagerImpl(this);
                 log.info("Initialized LocalModuleManagerImpl as fallback");
+                initializeLocalModules();
             }
         } else {
             log.info("StudioEngine not detected, using LocalModuleManagerImpl");
             PlexverseEngineBridge.moduleManager = new LocalModuleManagerImpl(this);
             log.info("Successfully initialized LocalModuleManagerImpl");
+            
+            // Register local modules
+            initializeLocalModules();
         }
+    }
+    
+    /**
+     * Initializes and registers local module implementations using class scanning.
+     */
+    private void initializeLocalModules() {
+        log.info("Scanning for local module implementations...");
+        final List<Object> modules = ModuleScanner.scanAndInstantiateModules(this);
+        
+        for (final Object module : modules) {
+            try {
+                moduleManager.registerModule(module);
+                log.info("Registered module: {}", module.getClass().getSimpleName());
+            } catch (final Exception e) {
+                log.error("Failed to register module {}: {}", module.getClass().getSimpleName(), e.getMessage(), e);
+            }
+        }
+        
+        log.info("Registered {} local module(s)", modules.size());
     }
 
     /**
