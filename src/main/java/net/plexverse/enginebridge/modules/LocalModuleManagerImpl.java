@@ -42,7 +42,11 @@ public class LocalModuleManagerImpl implements MineplexModuleManager {
     @Nullable
     public <T extends MineplexModule> T getRegisteredModule(@NotNull final Class<T> moduleClass) {
         final RegisteredServiceProvider<T> provider = servicesManager.getRegistration(moduleClass);
-        return provider != null ? provider.getProvider() : null;
+        if (provider == null) {
+            log.warn("Module {} is not available. If you need this module, please contribute an implementation at https://github.com/Plexverse/local-engine", moduleClass.getSimpleName());
+            return null;
+        }
+        return provider.getProvider();
     }
 
     @Override
