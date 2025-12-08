@@ -25,7 +25,7 @@ The module signatures match the official Studio Engine SDK, but the implementati
 - WorldModule 
 - LobbyModule
 - [DataStoreModule](src/main/java/net/plexverse/enginebridge/modules/datastore/README.md) - MongoDB-based data storage for structured and binary data
-- StatsModule - using DataStoreModule
+- [StatsModule](src/main/java/net/plexverse/enginebridge/modules/stats/README.md) - Player statistics management using DataStoreModule
 - LevelModule - using DataStoreModule with basic fake level algorithm
 - [MessagingModule](src/main/java/net/plexverse/enginebridge/modules/messaging/README.md) - Kafka-based inter-server messaging
 - MatchmakerModule - (empty implementation - no proxy support yet, add your own!)
