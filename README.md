@@ -22,8 +22,8 @@ The module signatures match the official Studio Engine SDK, but the implementati
 
 - [ResourcePackModule](src/main/java/net/plexverse/enginebridge/modules/resourcepack/README.md) - Local HTTP server for serving resource packs
 - [ChatModule](src/main/java/net/plexverse/enginebridge/modules/chat/README.md) - Chat channel management, filtering, and rendering
-- WorldModule 
-- LobbyModule
+- [WorldModule](src/main/java/net/plexverse/enginebridge/modules/world/README.md) - World creation and management with data points support
+- [LobbyModule](src/main/java/net/plexverse/enginebridge/modules/lobby/README.md) - Lobby management with spawn protection and game state handling
 - [DataStoreModule](src/main/java/net/plexverse/enginebridge/modules/datastore/README.md) - MongoDB-based data storage for structured and binary data
 - [StatsModule](src/main/java/net/plexverse/enginebridge/modules/stats/README.md) - Player statistics management using DataStoreModule
 - LevelModule - using DataStoreModule with basic fake level algorithm
@@ -81,7 +81,27 @@ dependencies {
 - Create a Personal Access Token (PAT) with the `read:packages` permission
 - Set it as `GITHUB_TOKEN` environment variable or `gpr.token` Gradle property
 
-### 2. Replace ModuleManager Imports
+### 2. Replace StudioEngine in Plugin Dependencies
+
+In your `plugin.yml`, replace `StudioEngine` with `PlexverseEngineBridge` in the `depend` or `softdepend` section:
+
+**Before:**
+```yaml
+depend: [ StudioEngine ]
+# or
+softdepend: [ StudioEngine ]
+```
+
+**After:**
+```yaml
+depend: [ PlexverseEngineBridge ]
+# or
+softdepend: [ PlexverseEngineBridge ]
+```
+
+**Note:** If you're using `softdepend`, the Engine Bridge will work as a fallback if Studio Engine is not present. If you're using `depend`, your plugin will require Engine Bridge to be loaded.
+
+### 3. Replace ModuleManager Imports
 
 Replace all imports of `MineplexModuleManager` with `ModuleManager` from Engine Bridge:
 
