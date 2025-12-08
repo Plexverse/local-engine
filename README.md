@@ -50,6 +50,59 @@ The JAR will be in `build/libs/`.
 
 Place the plugin JAR in your server's `plugins` folder. The plugin will provide Studio Engine functionality for local development and testing.
 
+## Migration Guide
+
+To migrate from using Mineplex's Studio Engine to Plexverse Engine Bridge for local development:
+
+### 1. Add Engine Bridge as a Dependency
+
+Add `engine-bridge` as a `compileOnly` dependency in your `build.gradle.kts`:
+
+```kotlin
+repositories {
+    maven {
+        name = "GitHubPackages"
+        url = uri("https://maven.pkg.github.com/Plexverse/engine-bridge")
+        credentials {
+            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_USERNAME")
+            password = project.findProperty("gpr.token") as String? ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
+}
+
+dependencies {
+    compileOnly("net.plexverse.enginebridge:engine-bridge:VERSION")
+}
+```
+
+**Note:** 
+- Replace `VERSION` with the latest release version (e.g., `1.0.0`)
+- **Authentication is required** even for public packages. GitHub Packages requires authentication for all Maven packages, regardless of repository visibility
+- Create a Personal Access Token (PAT) with the `read:packages` permission
+- Set it as `GITHUB_TOKEN` environment variable or `gpr.token` Gradle property
+
+### 2. Replace ModuleManager Imports
+
+Replace all imports of `MineplexModuleManager` with `ModuleManager` from Engine Bridge:
+
+**Before:**
+```java
+import com.mineplex.studio.sdk.modules.MineplexModuleManager;
+
+MineplexModuleManager.getRegisteredModule(ChatModule.class);
+MineplexModuleManager.getInstance().registerModule(myModule);
+```
+
+**After:**
+```java
+import net.plexverse.enginebridge.modules.ModuleManager;
+
+ModuleManager.getRegisteredModule(ChatModule.class);
+ModuleManager.getInstance().registerModule(myModule);
+```
+
+The API is identical, so no other code changes are needed. The Engine Bridge will automatically use the remote MineplexModuleManager if Studio Engine is present, or fall back to the local implementation otherwise.
+
 ## Contributing
 
 > [!NOTE]
