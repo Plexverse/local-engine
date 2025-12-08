@@ -1,5 +1,6 @@
 package net.plexverse.enginebridge.modules.lobby;
 
+import com.mineplex.studio.sdk.modules.MineplexModuleImplementation;
 import com.mineplex.studio.sdk.modules.lobby.LobbyModule;
 import com.mineplex.studio.sdk.modules.lobby.StudioLobby;
 import com.mineplex.studio.sdk.modules.world.MineplexWorld;
@@ -19,6 +20,7 @@ import java.util.Optional;
  */
 @Slf4j
 @RequiredArgsConstructor
+@MineplexModuleImplementation(LobbyModule.class)
 public class LobbyModuleImpl implements LobbyModule {
     
     private final JavaPlugin plugin;

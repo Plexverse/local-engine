@@ -1,5 +1,7 @@
 package net.plexverse.enginebridge.modules;
 
+import com.mineplex.studio.sdk.modules.MineplexModule;
+import com.mineplex.studio.sdk.modules.MineplexModuleManager;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,12 +20,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Local implementation of ModuleManager for running without Studio Engine.
+ * Local implementation of MineplexModuleManager for running without Studio Engine.
  * Uses Bukkit's ServicesManager to register and manage modules locally.
  */
 @Slf4j
 @RequiredArgsConstructor
-public class LocalModuleManagerImpl implements ModuleManager {
+public class LocalModuleManagerImpl implements MineplexModuleManager {
 
     private static final ServicePriority DEFAULT_PRIORITY = ServicePriority.Normal;
 
@@ -34,21 +36,20 @@ public class LocalModuleManagerImpl implements ModuleManager {
     public LocalModuleManagerImpl(@NonNull final JavaPlugin plugin) {
         this.plugin = plugin;
         this.servicesManager = Bukkit.getServicesManager();
-        this.register(ModuleManager.class, this, DEFAULT_PRIORITY);
+        this.register(MineplexModuleManager.class, this, DEFAULT_PRIORITY);
     }
 
-    @Override
     @Nullable
-    public <T> T getRegisteredModule(@NotNull final Class<T> moduleClass) {
+    public <T extends MineplexModule> T getRegisteredModule(@NotNull final Class<T> moduleClass) {
         final RegisteredServiceProvider<T> provider = servicesManager.getRegistration(moduleClass);
         return provider != null ? provider.getProvider() : null;
     }
 
     @Override
     @NotNull
-    public <T> ModuleManager registerModule(@NotNull final T instance) {
+    public MineplexModuleManager registerModule(@NotNull final MineplexModule instance) {
         @SuppressWarnings("unchecked")
-        final Class<T> moduleClass = (Class<T>) instance.getClass();
+        final Class<MineplexModule> moduleClass = (Class<MineplexModule>) instance.getClass();
         final ServicePriority priority = registeredModules.getOrDefault(moduleClass, DEFAULT_PRIORITY);
         
         if (hasModule(moduleClass, priority)) {
@@ -79,11 +80,11 @@ public class LocalModuleManagerImpl implements ModuleManager {
     }
 
     @Override
-    public void destroyModule(@NotNull final Class<?> module) {
+    public void destroyModule(@NotNull final Class<? extends MineplexModule> module) {
         destroyModule(module, DEFAULT_PRIORITY);
     }
 
-    private void destroyModule(@NotNull final Class<?> module, @NotNull final ServicePriority priority) {
+    private void destroyModule(@NotNull final Class<? extends MineplexModule> module, @NotNull final ServicePriority priority) {
         final List<? extends RegisteredServiceProvider<?>> providers = getRegistrations(module, priority);
         if (providers.isEmpty()) {
             log.error("Can't load registered module {} for destruction!", module.getSimpleName());
@@ -142,7 +143,11 @@ public class LocalModuleManagerImpl implements ModuleManager {
         
         // Destroy all modules
         for (final Map.Entry<Class<?>, ServicePriority> entry : modulesToDestroy.entrySet()) {
-            destroyModule(entry.getKey(), entry.getValue());
+            if (MineplexModule.class.isAssignableFrom(entry.getKey())) {
+                @SuppressWarnings("unchecked")
+                final Class<? extends MineplexModule> moduleClass = (Class<? extends MineplexModule>) entry.getKey();
+                destroyModule(moduleClass, entry.getValue());
+            }
         }
 
         servicesManager.unregister(this);

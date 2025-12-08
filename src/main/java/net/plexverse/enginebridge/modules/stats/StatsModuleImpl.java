@@ -1,11 +1,12 @@
 package net.plexverse.enginebridge.modules.stats;
 
+import com.mineplex.studio.sdk.modules.MineplexModuleImplementation;
 import com.mineplex.studio.sdk.modules.data.DataStorageModule;
 import com.mineplex.studio.sdk.modules.stats.StatsModule;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.plexverse.enginebridge.modules.ModuleManager;
+import com.mineplex.studio.sdk.modules.MineplexModuleManager;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -20,6 +21,7 @@ import java.util.concurrent.CompletableFuture;
  */
 @Slf4j
 @RequiredArgsConstructor
+@MineplexModuleImplementation(StatsModule.class)
 public class StatsModuleImpl implements StatsModule {
     
     private final JavaPlugin plugin;
@@ -34,7 +36,7 @@ public class StatsModuleImpl implements StatsModule {
      */
     @NonNull
     private DataStorageModule getDataStorageModule() {
-        final DataStorageModule dataStorageModule = ModuleManager.getInstance().getRegisteredModule(DataStorageModule.class);
+        final DataStorageModule dataStorageModule = MineplexModuleManager.getRegisteredModule(DataStorageModule.class);
         
         if (dataStorageModule == null) {
             throw new IllegalStateException("DataStorageModule is required for StatsModule but is not available. " +

@@ -1,7 +1,8 @@
 package net.plexverse.enginebridge.modules.world;
 
+import com.mineplex.studio.sdk.modules.MineplexModuleImplementation;
+import com.mineplex.studio.sdk.modules.MineplexModuleManager;
 import com.mineplex.studio.sdk.modules.data.DataStorageModule;
-import net.plexverse.enginebridge.modules.ModuleManager;
 import com.mineplex.studio.sdk.modules.world.MineplexWorld;
 import com.mineplex.studio.sdk.modules.world.MineplexWorldModule;
 import com.mineplex.studio.sdk.modules.world.config.MineplexWorldConfig;
@@ -39,6 +40,7 @@ import java.util.zip.ZipOutputStream;
  */
 @Slf4j
 @RequiredArgsConstructor
+@MineplexModuleImplementation(MineplexWorldModule.class)
 public class WorldModuleImpl implements MineplexWorldModule {
     
     private static final Path WORLD_STORAGE_PATH = Paths.get("worlds");
@@ -48,7 +50,7 @@ public class WorldModuleImpl implements MineplexWorldModule {
     private final Map<String, MineplexWorld> loadedWorlds = new HashMap<>();
     
     private DataStorageModule getDataStorageModule() {
-        return ModuleManager.getInstance().getRegisteredModule(DataStorageModule.class);
+        return MineplexModuleManager.getRegisteredModule(DataStorageModule.class);
     }
     
     private String createWorldName() {

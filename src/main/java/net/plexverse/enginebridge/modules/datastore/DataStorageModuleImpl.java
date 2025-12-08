@@ -12,6 +12,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.base.Preconditions;
 import com.mineplex.studio.jackson.MineplexJacksonModule;
+import com.mineplex.studio.sdk.modules.MineplexModuleImplementation;
 import com.mineplex.studio.sdk.modules.data.DataStorageModule;
 import com.mineplex.studio.sdk.modules.data.StorableBinaryData;
 import com.mineplex.studio.sdk.modules.data.StorableStructuredData;
@@ -46,6 +47,7 @@ import java.util.function.Consumer;
  */
 @Slf4j
 @RequiredArgsConstructor
+@MineplexModuleImplementation(DataStorageModule.class)
 public class DataStorageModuleImpl implements DataStorageModule {
     
     private ObjectMapper objectMapper = getDefaultObjectMapperBuilder().build();

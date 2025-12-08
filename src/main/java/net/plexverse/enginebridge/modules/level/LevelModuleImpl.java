@@ -1,5 +1,6 @@
 package net.plexverse.enginebridge.modules.level;
 
+import com.mineplex.studio.sdk.modules.MineplexModuleImplementation;
 import com.mineplex.studio.sdk.modules.data.DataStorageModule;
 import com.mineplex.studio.sdk.modules.level.MineplexLevelModule;
 import com.mineplex.studio.sdk.modules.level.experience.ExperienceAwardResult;
@@ -8,7 +9,7 @@ import com.mineplex.studio.sdk.modules.level.session.MineplexExperienceSession;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.plexverse.enginebridge.modules.ModuleManager;
+import com.mineplex.studio.sdk.modules.MineplexModuleManager;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @RequiredArgsConstructor
+@MineplexModuleImplementation(MineplexLevelModule.class)
 public class LevelModuleImpl implements MineplexLevelModule {
     
     private final JavaPlugin plugin;
@@ -49,7 +51,7 @@ public class LevelModuleImpl implements MineplexLevelModule {
      */
     @NonNull
     private DataStorageModule getDataStorageModule() {
-        final DataStorageModule dataStorageModule = ModuleManager.getInstance().getRegisteredModule(DataStorageModule.class);
+        final DataStorageModule dataStorageModule = MineplexModuleManager.getRegisteredModule(DataStorageModule.class);
         
         if (dataStorageModule == null) {
             throw new IllegalStateException("DataStorageModule is required for LevelModule but is not available. " +

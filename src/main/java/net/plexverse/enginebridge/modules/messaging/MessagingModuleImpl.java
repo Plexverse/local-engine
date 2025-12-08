@@ -3,6 +3,7 @@ package net.plexverse.enginebridge.modules.messaging;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
+import com.mineplex.studio.sdk.modules.MineplexModuleImplementation;
 import com.mineplex.studio.sdk.modules.messaging.MessagingModule;
 import com.mineplex.studio.sdk.modules.messaging.event.AsyncMineplexMessageReceivedEvent;
 import com.mineplex.studio.sdk.modules.messaging.target.MineplexMessageTarget;
@@ -41,6 +42,7 @@ import java.util.concurrent.ForkJoinPool;
  */
 @Slf4j
 @RequiredArgsConstructor
+@MineplexModuleImplementation(MessagingModule.class)
 public class MessagingModuleImpl implements MessagingModule {
     
     private static final int POLLING_TICKS = 20;

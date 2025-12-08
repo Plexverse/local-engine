@@ -9,7 +9,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.plexverse.enginebridge.modules.ModuleManager;
+import com.mineplex.studio.sdk.modules.MineplexModuleManager;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -38,13 +38,13 @@ public class BasicStudioLobby implements StudioLobby {
     
     @Override
     public void setup() {
-        gameModule = ModuleManager.getInstance().getRegisteredModule(MineplexGameModule.class);
+        gameModule = MineplexModuleManager.getRegisteredModule(MineplexGameModule.class);
         log.info("BasicStudioLobby setup for world: {}", lobbyWorld.getMinecraftWorld().getName());
     }
     
     @Override
     public void teardown() {
-        final MineplexWorldModule worldModule = ModuleManager.getInstance().getRegisteredModule(MineplexWorldModule.class);
+        final MineplexWorldModule worldModule = MineplexModuleManager.getRegisteredModule(MineplexWorldModule.class);
         if (worldModule != null) {
             worldModule.releaseWorld(lobbyWorld);
         }

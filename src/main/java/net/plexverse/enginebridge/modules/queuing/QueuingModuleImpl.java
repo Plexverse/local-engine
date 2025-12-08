@@ -1,5 +1,6 @@
 package net.plexverse.enginebridge.modules.queuing;
 
+import com.mineplex.studio.sdk.modules.MineplexModuleImplementation;
 import com.mineplex.studio.sdk.modules.queuing.QueuingModule;
 import com.mineplex.studio.sdk.modules.queuing.GetQueueStatusResponse;
 import lombok.NonNull;
@@ -24,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j
 @RequiredArgsConstructor
+@MineplexModuleImplementation(QueuingModule.class)
 public class QueuingModuleImpl implements QueuingModule {
     
     private final JavaPlugin plugin;

@@ -1,6 +1,7 @@
 package net.plexverse.enginebridge.modules.resourcepack;
 
 import com.google.common.collect.ImmutableMap;
+import com.mineplex.studio.sdk.modules.MineplexModuleImplementation;
 import com.mineplex.studio.sdk.modules.resourcepack.ResourcePack;
 import com.mineplex.studio.sdk.modules.resourcepack.ResourcePackModule;
 import lombok.NonNull;
@@ -30,6 +31,7 @@ import java.util.UUID;
  */
 @Slf4j
 @RequiredArgsConstructor
+@MineplexModuleImplementation(ResourcePackModule.class)
 public class ResourcePackModuleImpl implements ResourcePackModule {
     
     private static final Path RESOURCE_PACK_DIR = Paths.get("config", "resource-packs");

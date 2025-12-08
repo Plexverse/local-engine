@@ -20,6 +20,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import com.mineplex.studio.sdk.modules.MineplexModuleImplementation;
 import com.mineplex.studio.sdk.modules.chat.BuiltInChatChannel;
 import com.mineplex.studio.sdk.modules.chat.ChatChannel;
 import com.mineplex.studio.sdk.modules.chat.ChatModule;
@@ -43,6 +44,7 @@ import java.util.function.Supplier;
  */
 @Slf4j
 @RequiredArgsConstructor
+@MineplexModuleImplementation(ChatModule.class)
 public class ChatModuleImpl implements ChatModule, Listener {
     
     private final Set<ChatChannel> silencedChannels = Collections.synchronizedSet(new HashSet<>());
