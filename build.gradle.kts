@@ -19,6 +19,8 @@ dependencies {
     implementation(libs.mongodb.driver.sync)
     // Caffeine cache for key field caching
     implementation(libs.caffeine)
+    // Kafka clients for MessagingModule
+    implementation(libs.kafka.clients)
 }
 
 group = "net.plexverse.enginebridge"

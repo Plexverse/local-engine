@@ -17,4 +17,15 @@ modules:
       # Enable basic profanity filtering
       # Note: This is a simplified local filter. For production, consider a more robust solution.
       enabled: false
+  
+  # Messaging Module Configuration
+  messaging:
+    # Kafka bootstrap servers
+    # Default: kafka:9092 (for Docker Compose)
+    # For local development: localhost:9092
+    bootstrap-servers: "kafka:9092"
+    # Topic prefix for all messages
+    topic-prefix: "plexverse-messages"
+    # Consumer group ID for this instance
+    consumer-group-id: "plexverse-engine-bridge"
 
