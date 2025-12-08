@@ -15,25 +15,7 @@ repositories {
 }
 
 dependencies {
-    implementation(libs.bundles.reflections)
-    implementation(libs.bundles.apache)
-    implementation(libs.bundles.scoreboard)
-    implementation(libs.mapstruct)
-    implementation(libs.adventure.platform.api)
-    implementation(libs.gson)
-    annotationProcessor(libs.mapstruct.processor)
-    implementation("commons-codec:commons-codec:1.17.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    
-    // OTLP/gRPC dependencies
-    implementation("io.opentelemetry:opentelemetry-api:1.32.0")
-    implementation("io.opentelemetry:opentelemetry-sdk:1.32.0")
-    implementation("io.opentelemetry:opentelemetry-sdk-logs:1.32.0")
-    implementation("io.opentelemetry:opentelemetry-exporter-otlp:1.32.0")
-    implementation("io.opentelemetry.semconv:opentelemetry-semconv:1.21.0-alpha")
-    implementation("io.grpc:grpc-netty-shaded:1.60.0")
-    implementation("io.grpc:grpc-protobuf:1.60.0")
-    implementation("io.grpc:grpc-stub:1.60.0")
+
 }
 
 group = "net.plexverse.enginebridge"
@@ -67,12 +49,6 @@ publishing {
                 name.set("Plexverse Engine Bridge")
                 description.set("Bridge plugin for Plexverse Engine")
                 url.set("https://github.com/Plexverse/engine-bridge")
-                
-                licenses {
-                    license {
-                        name.set("Proprietary")
-                    }
-                }
                 
                 developers {
                     developer {

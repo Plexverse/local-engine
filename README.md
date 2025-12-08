@@ -20,6 +20,7 @@ For detailed information about the built-in modules and their APIs, see the [Min
 
 The module signatures match the official Studio Engine SDK, but the implementations differ for local running. See the linked readmes for each feature below for requirements and setup instructions for local use.
 
+- ResourcePack
 - ChatModule
 - WorldModule 
 - LobbyModule
