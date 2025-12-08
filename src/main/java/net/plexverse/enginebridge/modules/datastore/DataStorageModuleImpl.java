@@ -50,11 +50,18 @@ import java.util.function.Consumer;
 @MineplexModuleImplementation(DataStorageModule.class)
 public class DataStorageModuleImpl implements DataStorageModule {
     
-    private ObjectMapper objectMapper = getDefaultObjectMapperBuilder().build();
+    private ObjectMapper objectMapper;
     private final Cache<Class<?>, Field> keyFields = Caffeine.newBuilder().build();
     private final JavaPlugin plugin;
     private MongoClient mongoClient;
     private MongoDatabase database;
+    
+    private ObjectMapper getObjectMapper() {
+        if (objectMapper == null) {
+            objectMapper = getDefaultObjectMapperBuilder().build();
+        }
+        return objectMapper;
+    }
     
     @Override
     public void setup() {
@@ -67,6 +74,9 @@ public class DataStorageModuleImpl implements DataStorageModule {
             mongoClient = MongoClients.create(connectionString);
             database = mongoClient.getDatabase(databaseName);
             log.info("Connected to MongoDB database: {}", databaseName);
+            
+            // Initialize ObjectMapper after MongoDB connection is established
+            objectMapper = getDefaultObjectMapperBuilder().build();
         } catch (Exception e) {
             log.error("Failed to connect to MongoDB", e);
             throw new RuntimeException("Failed to initialize MongoDB connection", e);
@@ -141,7 +151,7 @@ public class DataStorageModuleImpl implements DataStorageModule {
             final String collectionName = getCollectionName(data.getClass());
             final String key = getKey(data.getClass(), data);
             
-            final String serialized = objectMapper.writeValueAsString(data);
+            final String serialized = getObjectMapper().writeValueAsString(data);
             final Document document = new Document("_id", key)
                     .append("data", serialized);
             
@@ -230,7 +240,7 @@ public class DataStorageModuleImpl implements DataStorageModule {
                 return Optional.empty();
             }
             
-            return Optional.ofNullable(objectMapper.readValue(serialized, dataClass));
+            return Optional.ofNullable(getObjectMapper().readValue(serialized, dataClass));
         } catch (JsonProcessingException e) {
             log.warn("Failed to load structured data for key {} and class {}", key, dataClass, e);
             return Optional.empty();

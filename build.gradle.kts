@@ -21,7 +21,7 @@ dependencies {
     implementation(libs.caffeine)
     // Kafka clients for MessagingModule
     implementation(libs.kafka.clients)
-    // Jackson YAML for world data points parsing
+    // Jackson YAML (only YAML, core Jackson comes from SDK)
     implementation(libs.jackson.yaml)
 }
 
@@ -40,6 +40,33 @@ tasks {
                 line.replace("@version@", project.version.toString())
             }
         }
+    }
+    
+    named<ShadowJar>("shadowJar") {
+        archiveClassifier.set("all-local")
+        isZip64 = true
+        from(sourceSets.main.get().output)
+        configurations = listOf(project.configurations.runtimeClasspath.get())
+        
+        // Include Mineplex SDK classes from compile classpath
+        project.configurations.compileClasspath.get().resolvedConfiguration.resolvedArtifacts
+            .filter { it.moduleVersion.id.group.startsWith("com.mineplex") }
+            .forEach { artifact ->
+                if (artifact.file.exists() && artifact.file.extension == "jar") {
+                    from(project.zipTree(artifact.file)) {
+                        include("com/mineplex/**")
+                        exclude("META-INF/**")
+                    }
+                }
+            }
+        
+        mergeServiceFiles()
+        exclude("org/bukkit/**")
+        exclude("org/spigotmc/**")
+        exclude("io/papermc/**")
+        
+        // Relocate Jackson YAML to avoid conflicts (SDK already includes core Jackson)
+        relocate("com.fasterxml.jackson.dataformat.yaml", "net.plexverse.enginebridge.relocated.jackson.dataformat.yaml")
     }
 }
 

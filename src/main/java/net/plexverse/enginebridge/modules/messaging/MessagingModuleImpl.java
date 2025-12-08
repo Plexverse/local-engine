@@ -6,6 +6,7 @@ import com.google.common.base.Preconditions;
 import com.mineplex.studio.sdk.modules.MineplexModuleImplementation;
 import com.mineplex.studio.sdk.modules.messaging.MessagingModule;
 import com.mineplex.studio.sdk.modules.messaging.event.AsyncMineplexMessageReceivedEvent;
+import com.mineplex.studio.sdk.modules.messaging.listener.MessageReceiveListener;
 import com.mineplex.studio.sdk.modules.messaging.target.MineplexMessageTarget;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -64,27 +65,35 @@ public class MessagingModuleImpl implements MessagingModule {
         consumerGroupId = config.getString("modules.messaging.consumer-group-id", "plexverse-engine-bridge");
         
         try {
-            // Create producer
-            final Properties producerProps = new Properties();
-            producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-            producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            producerProps.put(ProducerConfig.ACKS_CONFIG, "all");
-            producerProps.put(ProducerConfig.RETRIES_CONFIG, 3);
-            producer = new KafkaProducer<>(producerProps);
-            
-            // Create consumer
-            final Properties consumerProps = new Properties();
-            consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-            consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupId);
-            consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-            consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-            consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-            consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
-            consumer = new KafkaConsumer<>(consumerProps);
-            
-            log.info("Connected to Kafka at {}", bootstrapServers);
-            startMessagePolling();
+            // Set context classloader to plugin's classloader to ensure Kafka can find serializer classes
+            final ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+            try {
+                Thread.currentThread().setContextClassLoader(plugin.getClass().getClassLoader());
+                
+                // Create producer
+                final Properties producerProps = new Properties();
+                producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+                producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+                producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+                producerProps.put(ProducerConfig.ACKS_CONFIG, "all");
+                producerProps.put(ProducerConfig.RETRIES_CONFIG, 3);
+                producer = new KafkaProducer<>(producerProps);
+                
+                // Create consumer
+                final Properties consumerProps = new Properties();
+                consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+                consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupId);
+                consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+                consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+                consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+                consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
+                consumer = new KafkaConsumer<>(consumerProps);
+                
+                log.info("Connected to Kafka at {}", bootstrapServers);
+                startMessagePolling();
+            } finally {
+                Thread.currentThread().setContextClassLoader(originalClassLoader);
+            }
         } catch (Exception e) {
             log.error("Failed to connect to Kafka", e);
             throw new RuntimeException("Failed to initialize Kafka connection", e);
@@ -327,7 +336,7 @@ public class MessagingModuleImpl implements MessagingModule {
     }
     
     @Override
-    public <T> boolean registerReceiveListener(@NonNull final com.mineplex.studio.sdk.modules.messaging.listener.MessageReceiveListener<T> listener) {
+    public <T> boolean registerReceiveListener(@NonNull final MessageReceiveListener<T> listener) {
         // Local implementation: listeners are handled via AsyncMineplexMessageReceivedEvent
         // This method is a no-op for local implementation as we use event-based listening
         log.debug("registerReceiveListener called (local implementation uses events)");
@@ -335,7 +344,7 @@ public class MessagingModuleImpl implements MessagingModule {
     }
     
     @Override
-    public boolean unregisterReceiveListener(@NonNull final com.mineplex.studio.sdk.modules.messaging.listener.MessageReceiveListener<?> listener) {
+    public boolean unregisterReceiveListener(@NonNull final MessageReceiveListener<?> listener) {
         // Local implementation: listeners are handled via AsyncMineplexMessageReceivedEvent
         // This method is a no-op for local implementation as we use event-based listening
         log.debug("unregisterReceiveListener called (local implementation uses events)");

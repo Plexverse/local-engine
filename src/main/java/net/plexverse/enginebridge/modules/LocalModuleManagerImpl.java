@@ -1,6 +1,7 @@
 package net.plexverse.enginebridge.modules;
 
 import com.mineplex.studio.sdk.modules.MineplexModule;
+import com.mineplex.studio.sdk.modules.MineplexModuleImplementation;
 import com.mineplex.studio.sdk.modules.MineplexModuleManager;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -52,8 +53,8 @@ public class LocalModuleManagerImpl implements MineplexModuleManager {
     @Override
     @NotNull
     public MineplexModuleManager registerModule(@NotNull final MineplexModule instance) {
-        @SuppressWarnings("unchecked")
-        final Class<MineplexModule> moduleClass = (Class<MineplexModule>) instance.getClass();
+        // Get the interface class from @MineplexModuleImplementation annotation, or use the first MineplexModule interface
+        Class<? extends MineplexModule> moduleClass = getModuleInterfaceClass(instance);
         final ServicePriority priority = registeredModules.getOrDefault(moduleClass, DEFAULT_PRIORITY);
         
         if (hasModule(moduleClass, priority)) {
@@ -77,10 +78,40 @@ public class LocalModuleManagerImpl implements MineplexModuleManager {
             log.info("Registered event listeners for module {}.", instance.getClass().getSimpleName());
         }
         
-        register(moduleClass, instance, priority);
+        @SuppressWarnings("unchecked")
+        final Class<MineplexModule> registerClass = (Class<MineplexModule>) moduleClass;
+        register(registerClass, instance, priority);
         registeredModules.put(moduleClass, priority);
         
         return this;
+    }
+    
+    /**
+     * Gets the interface class that this module should be registered under.
+     * First checks for @MineplexModuleImplementation annotation, then falls back to finding
+     * the first interface that extends MineplexModule.
+     */
+    @SuppressWarnings("unchecked")
+    private Class<? extends MineplexModule> getModuleInterfaceClass(@NotNull final MineplexModule instance) {
+        final Class<?> instanceClass = instance.getClass();
+        
+        // Check for @MineplexModuleImplementation annotation
+        final MineplexModuleImplementation annotation = 
+                instanceClass.getAnnotation(MineplexModuleImplementation.class);
+        if (annotation != null) {
+            return (Class<? extends MineplexModule>) annotation.value();
+        }
+        
+        // Fallback: find the first interface that extends MineplexModule
+        for (final Class<?> iface : instanceClass.getInterfaces()) {
+            if (MineplexModule.class.isAssignableFrom(iface) && iface != MineplexModule.class) {
+                return (Class<? extends MineplexModule>) iface;
+            }
+        }
+        
+        // Last resort: use the concrete class (shouldn't happen for properly annotated modules)
+        log.warn("Could not determine interface class for {}, using concrete class", instanceClass.getSimpleName());
+        return (Class<? extends MineplexModule>) instanceClass;
     }
 
     @Override
