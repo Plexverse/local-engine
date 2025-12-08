@@ -16,6 +16,10 @@ Plexverse Engine Bridge provides a local implementation of Mineplex's Studio Eng
 
 ## Features
 
+For detailed information about the built-in modules and their APIs, see the [Mineplex Studio SDK Features documentation](https://docs.mineplex.com/docs/sdk/features).
+
+The module signatures match the official Studio Engine SDK, but the implementations differ for local running. See the linked readmes for each feature below for requirements and setup instructions for local use.
+
 - ChatModule
 - WorldModule 
 - LobbyModule
