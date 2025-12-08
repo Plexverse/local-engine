@@ -25,7 +25,7 @@ public class LocalChatFilter implements ChatFilter {
     public LocalChatFilter(@NotNull final Plugin plugin) {
         this.plugin = plugin;
         // For local development, filtering can be disabled or simplified
-        this.enabled = plugin.getConfig().getBoolean("chat-filter.enabled", false);
+        this.enabled = plugin.getConfig().getBoolean("modules.chat.filter.enabled", false);
         log.info("LocalChatFilter initialized (enabled: {})", enabled);
     }
     

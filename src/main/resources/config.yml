@@ -1,0 +1,20 @@
+# Plexverse Engine Bridge Configuration
+
+modules:
+  # DataStore Module Configuration
+  datastore:
+    # MongoDB connection string
+    # Default: mongodb://mongo:27017 (for Docker Compose)
+    # For local development: mongodb://localhost:27017
+    connection-string: "mongodb://mongo:27017"
+    # Database name
+    database: "mineplex"
+  
+  # Chat Module Configuration
+  chat:
+    # Chat Filter Configuration
+    filter:
+      # Enable basic profanity filtering
+      # Note: This is a simplified local filter. For production, consider a more robust solution.
+      enabled: false
+

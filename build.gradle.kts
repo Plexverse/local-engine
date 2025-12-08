@@ -15,7 +15,10 @@ repositories {
 }
 
 dependencies {
-
+    // MongoDB driver for DataStorageModule
+    implementation(libs.mongodb.driver.sync)
+    // Caffeine cache for key field caching
+    implementation(libs.caffeine)
 }
 
 group = "net.plexverse.enginebridge"

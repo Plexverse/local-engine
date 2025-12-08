@@ -8,9 +8,13 @@ import net.plexverse.enginebridge.modules.ModuleManager;
 import net.plexverse.enginebridge.modules.RemoteModuleManagerImpl;
 import net.plexverse.enginebridge.util.ModuleScanner;
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 @Slf4j
@@ -62,6 +66,10 @@ public class PlexverseEngineBridge extends JavaPlugin {
     @Override
     public void onEnable() {
         log.info("PlexverseEngineBridge enabled");
+        
+        // Generate default config if it doesn't exist
+        saveDefaultConfig();
+        reloadConfig();
         
         // Check if StudioEngine is present
         final Plugin studioEngine = Bukkit.getPluginManager().getPlugin("StudioEngine");
