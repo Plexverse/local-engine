@@ -34,7 +34,6 @@ The module signatures match the official Studio Engine SDK, but the implementati
 
 - Java 21+
 - Paper/Spigot 1.21+
-- StudioEngine (optional - soft dependency - this plugin will act as a proxy if present)
 
 ## Building
 
@@ -48,80 +47,17 @@ The JAR will be in `build/libs/`.
 
 ## Usage
 
-Place the plugin JAR in your server's `plugins` folder. The plugin will provide Studio Engine functionality for local development and testing.
+### Docker Setup
 
-## Migration Guide
+For a complete local development environment with Docker Compose, see [local-docker](https://github.com/Plexverse/local-docker). This repository provides:
+- A Docker image for locally running the game server
+- Docker Compose setup guide
+- Instructions for running everything from a project folder to a functional server
+- Required services (MongoDB, Kafka, etc.) configured and ready to use
+- Automatically downloads the latest local-engine release
 
-To migrate from using Mineplex's Studio Engine to Plexverse Engine Bridge for local development:
-
-### 1. Add Engine Bridge as a Dependency
-
-Add `engine-bridge` as a `compileOnly` dependency in your `build.gradle.kts`:
-
-```kotlin
-repositories {
-    maven {
-        name = "GitHubPackages"
-        url = uri("https://maven.pkg.github.com/Plexverse/engine-bridge")
-        credentials {
-            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_USERNAME")
-            password = project.findProperty("gpr.token") as String? ?: System.getenv("GITHUB_TOKEN")
-        }
-    }
-}
-
-dependencies {
-    compileOnly("net.plexverse.enginebridge:engine-bridge:VERSION")
-}
-```
-
-**Note:** 
-- Replace `VERSION` with the latest release version (e.g., `1.0.0`)
-- **Authentication is required** even for public packages. GitHub Packages requires authentication for all Maven packages, regardless of repository visibility
-- Create a Personal Access Token (PAT) with the `read:packages` permission
-- Set it as `GITHUB_TOKEN` environment variable or `gpr.token` Gradle property
-
-### 2. Replace StudioEngine in Plugin Dependencies
-
-In your `plugin.yml`, replace `StudioEngine` with `PlexverseEngineBridge` in the `depend` or `softdepend` section:
-
-**Before:**
-```yaml
-depend: [ StudioEngine ]
-# or
-softdepend: [ StudioEngine ]
-```
-
-**After:**
-```yaml
-depend: [ PlexverseEngineBridge ]
-# or
-softdepend: [ PlexverseEngineBridge ]
-```
-
-**Note:** If you're using `softdepend`, the Engine Bridge will work as a fallback if Studio Engine is not present. If you're using `depend`, your plugin will require Engine Bridge to be loaded.
-
-### 3. Replace ModuleManager Imports
-
-Replace all imports of `MineplexModuleManager` with `ModuleManager` from Engine Bridge:
-
-**Before:**
-```java
-import com.mineplex.studio.sdk.modules.MineplexModuleManager;
-
-MineplexModuleManager.getRegisteredModule(ChatModule.class);
-MineplexModuleManager.getInstance().registerModule(myModule);
-```
-
-**After:**
-```java
-import net.plexverse.enginebridge.modules.ModuleManager;
-
-ModuleManager.getRegisteredModule(ChatModule.class);
-ModuleManager.getInstance().registerModule(myModule);
-```
-
-The API is identical, so no other code changes are needed. The Engine Bridge will automatically use the remote MineplexModuleManager if Studio Engine is present, or fall back to the local implementation otherwise.
+> [!IMPORTANT]
+> This plugin is **only intended for local running**. Do not use this in production environments. For production, use the official Studio Engine.
 
 ## Contributing
 

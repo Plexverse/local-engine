@@ -2,11 +2,13 @@
 mongodb-driver = "4.11.1"
 caffeine = "3.1.8"
 kafka-clients = "3.7.0"
+jackson-yaml = "2.16.1"
 
 [libraries]
 mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version.ref = "mongodb-driver" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka-clients" }
+jackson-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson-yaml" }
 
 [plugins]
 

@@ -28,4 +28,23 @@ modules:
     topic-prefix: "plexverse-messages"
     # Consumer group ID for this instance
     consumer-group-id: "plexverse-engine-bridge"
+  
+  # ResourcePack Module Configuration
+  resourcepack:
+    # Enable the built-in HTTP server for serving resource packs
+    # Default: false
+    # Set to true to enable automatic resource pack serving
+    http-server-enabled: false
+    # HTTP bind host - where the server listens for connections
+    # Default: 0.0.0.0 (all interfaces, good for Docker)
+    # Use 0.0.0.0 to accept connections from outside the container
+    http-bind-host: "0.0.0.0"
+    # HTTP URL host - the hostname/IP used in resource pack URLs sent to clients
+    # Default: localhost
+    # For Docker: set this to your container's hostname or external IP
+    # Examples: "localhost", "192.168.1.100", "minecraft.example.com"
+    http-url-host: "localhost"
+    # HTTP port for serving resource packs locally
+    # Default: 8080
+    http-port: 8080
 

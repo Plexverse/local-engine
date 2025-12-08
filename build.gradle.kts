@@ -21,6 +21,8 @@ dependencies {
     implementation(libs.caffeine)
     // Kafka clients for MessagingModule
     implementation(libs.kafka.clients)
+    // Jackson YAML for world data points parsing
+    implementation(libs.jackson.yaml)
 }
 
 group = "net.plexverse.enginebridge"

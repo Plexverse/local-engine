@@ -1,9 +1,7 @@
-name: PlexverseEngineBridge
+name: StudioEngine
 version: '@version@'
 main: net.plexverse.enginebridge.PlexverseEngineBridge
 api-version: '1.21'
 author: Plexverse
 description: A bridge for Mineplex's Studio Engine, allowing local running
-softdepend: [ StudioEngine ]
-depend: [ ProtocolLib, DecentHolograms ]
 
