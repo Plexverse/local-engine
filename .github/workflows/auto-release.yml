@@ -1,9 +1,9 @@
-name: Engine Bridge 🔄 Auto Release on Master
+name: Engine Bridge 🔄 Auto Release on Main
 
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   trigger-release:

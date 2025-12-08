@@ -98,7 +98,7 @@ jobs:
         run: |
           git add build.gradle.kts
           git commit -m "[PV-0] chore: bump version to ${{ steps.bump.outputs.new }} [skip ci]"
-          git push origin HEAD:master
+          git push origin HEAD:main
 
       - name: Create tag
         run: |

@@ -7,12 +7,12 @@ on:
   # Trigger on push to main or staging (to sync to staging)
   push:
     branches:
-      - master
+      - main
       - staging
   # Trigger on PR events (including label events)
   pull_request:
     branches:
-      - master
+      - main
     types: [opened, reopened, synchronize, labeled, unlabeled]
   # Allow manual triggering
   workflow_dispatch:
@@ -35,7 +35,7 @@ jobs:
       - name: Run Auto Staging
         uses: Plexverse/auto-staging@v1
         with:
-          main_branch: 'master'
+          main_branch: 'main'
           staging_branch: 'staging'
           to_stage_label: 'to-stage'
           staged_label: 'staged'
