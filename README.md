@@ -1,4 +1,8 @@
-# Plexverse Engine Bridge
+<img width="4096" height="843" alt="Github Repository Header" src="https://github.com/user-attachments/assets/7e2b04c5-a422-49c5-9d24-4bd1635a0627" />
+</br>
+</br>
+
+![Version](https://img.shields.io/badge/version-1.0.0-blue?style=flat-square)
 
 A bridge plugin for Mineplex's Studio Engine that allows for local running. This plugin implements Mineplex's Studio Engine's main modules but enables local development and testing without requiring the full Studio Engine infrastructure.
 
