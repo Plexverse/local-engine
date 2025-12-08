@@ -19,7 +19,7 @@ on:
 
 jobs:
   auto-staging:
-    runs-on: warp-ubuntu-latest-arm64-2x
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write

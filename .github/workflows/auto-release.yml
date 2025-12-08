@@ -7,7 +7,7 @@ on:
 
 jobs:
   trigger-release:
-    runs-on: warp-ubuntu-latest-arm64-2x
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       actions: write

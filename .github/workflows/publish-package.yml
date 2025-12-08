@@ -6,7 +6,7 @@ on:
 
 jobs:
   publish:
-    runs-on: warp-ubuntu-latest-arm64-2x
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
