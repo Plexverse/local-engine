@@ -1,0 +1,47 @@
+name: Engine Bridge 🔁 Auto Staging
+
+on:
+  # Scheduled reset every Sunday at midnight
+  schedule:
+    - cron: '0 0 * * 0'  # Sunday midnight UTC
+  # Trigger on push to main or staging (to sync to staging)
+  push:
+    branches:
+      - master
+      - staging
+  # Trigger on PR events (including label events)
+  pull_request:
+    branches:
+      - master
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  auto-staging:
+    runs-on: warp-ubuntu-latest-arm64-2x
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Run Auto Staging
+        uses: Plexverse/auto-staging@v1
+        with:
+          main_branch: 'master'
+          staging_branch: 'staging'
+          to_stage_label: 'to-stage'
+          staged_label: 'staged'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reset_schedule: '0 0 * * 0'
+          enable_auto_sync: 'true'
+          enable_scheduled_reset: 'true'
+          enable_pr_labeling: 'true'
+

@@ -1,0 +1,13 @@
+name: Engine Bridge 🎫 Check Ticket IDs
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-ticket-ids:
+    uses: Plexverse/shared-workflows/.github/workflows/check-ticket-ids.yml@main
+    with:
+      allowed_prefixes: "ENG,BUG"  # Optional: restrict to specific prefixes (e.g., "ENG,BUG,FEAT")
+      fail_on_missing: true
+
