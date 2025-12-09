@@ -54,7 +54,9 @@ public class MessagingModuleImpl implements MessagingModule {
     private KafkaConsumer<String, String> consumer;
     private BukkitTask pollingTask;
     private final Set<String> registeredKeys = ConcurrentHashMap.newKeySet();
+    private final Set<String> subscribedTopics = ConcurrentHashMap.newKeySet();
     private String consumerGroupId;
+    private final Object consumerLock = new Object();
     
     @Override
     public void setup() {
@@ -64,40 +66,72 @@ public class MessagingModuleImpl implements MessagingModule {
         final String topicPrefix = config.getString("modules.messaging.topic-prefix", "plexverse-messages");
         consumerGroupId = config.getString("modules.messaging.consumer-group-id", "plexverse-engine-bridge");
         
-        try {
-            // Set context classloader to plugin's classloader to ensure Kafka can find serializer classes
-            final ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+        // Retry configuration
+        final int maxRetries = 10;
+        final long initialRetryDelayMs = 2000; // 2 seconds
+        final long maxRetryDelayMs = 30000; // 30 seconds
+        long retryDelayMs = initialRetryDelayMs;
+        
+        Exception lastException = null;
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                Thread.currentThread().setContextClassLoader(plugin.getClass().getClassLoader());
-                
-                // Create producer
-                final Properties producerProps = new Properties();
-                producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-                producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-                producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-                producerProps.put(ProducerConfig.ACKS_CONFIG, "all");
-                producerProps.put(ProducerConfig.RETRIES_CONFIG, 3);
-                producer = new KafkaProducer<>(producerProps);
-                
-                // Create consumer
-                final Properties consumerProps = new Properties();
-                consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-                consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupId);
-                consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-                consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-                consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-                consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
-                consumer = new KafkaConsumer<>(consumerProps);
-                
-                log.info("Connected to Kafka at {}", bootstrapServers);
-                startMessagePolling();
-            } finally {
-                Thread.currentThread().setContextClassLoader(originalClassLoader);
+                // Set context classloader to plugin's classloader to ensure Kafka can find serializer classes
+                final ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+                try {
+                    Thread.currentThread().setContextClassLoader(plugin.getClass().getClassLoader());
+                    
+                    // Create producer with retry configuration
+                    final Properties producerProps = new Properties();
+                    producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+                    producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+                    producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+                    producerProps.put(ProducerConfig.ACKS_CONFIG, "all");
+                    producerProps.put(ProducerConfig.RETRIES_CONFIG, 3);
+                    producerProps.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 10000);
+                    producerProps.put(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, 540000);
+                    producer = new KafkaProducer<>(producerProps);
+                    
+                    // Create consumer with retry configuration
+                    final Properties consumerProps = new Properties();
+                    consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+                    consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupId);
+                    consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+                    consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+                    consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+                    consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
+                    consumerProps.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, 10000);
+                    consumerProps.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 30000);
+                    consumer = new KafkaConsumer<>(consumerProps);
+                    
+                    log.info("Connected to Kafka at {} (attempt {}/{})", bootstrapServers, attempt, maxRetries);
+                    startMessagePolling();
+                    return; // Success, exit retry loop
+                } finally {
+                    Thread.currentThread().setContextClassLoader(originalClassLoader);
+                }
+            } catch (Exception e) {
+                lastException = e;
+                if (attempt < maxRetries) {
+                    log.warn("Failed to connect to Kafka at {} (attempt {}/{}): {}. Retrying in {}ms...", 
+                        bootstrapServers, attempt, maxRetries, e.getMessage(), retryDelayMs);
+                    try {
+                        Thread.sleep(retryDelayMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        log.error("Interrupted while waiting to retry Kafka connection");
+                        throw new RuntimeException("Failed to initialize Kafka connection: interrupted", ie);
+                    }
+                    // Exponential backoff with max cap
+                    retryDelayMs = Math.min(retryDelayMs * 2, maxRetryDelayMs);
+                } else {
+                    log.error("Failed to connect to Kafka after {} attempts", maxRetries, e);
+                }
             }
-        } catch (Exception e) {
-            log.error("Failed to connect to Kafka", e);
-            throw new RuntimeException("Failed to initialize Kafka connection", e);
         }
+        
+        // If we get here, all retries failed
+        log.error("Failed to connect to Kafka at {} after {} attempts", bootstrapServers, maxRetries);
+        throw new RuntimeException("Failed to initialize Kafka connection after " + maxRetries + " attempts", lastException);
     }
     
     @Override
@@ -107,9 +141,12 @@ public class MessagingModuleImpl implements MessagingModule {
             pollingTask = null;
         }
         
-        if (consumer != null) {
-            consumer.close();
-            consumer = null;
+        synchronized (consumerLock) {
+            if (consumer != null) {
+                consumer.close();
+                consumer = null;
+            }
+            subscribedTopics.clear();
         }
         
         if (producer != null) {
@@ -134,23 +171,33 @@ public class MessagingModuleImpl implements MessagingModule {
             return;
         }
         
-        try {
-            // Subscribe to topics for all registered keys
-            final List<String> topics = registeredKeys.stream()
-                .map(key -> getTopicName(key))
-                .toList();
-            
-            if (!topics.isEmpty()) {
-                consumer.subscribe(topics);
+        synchronized (consumerLock) {
+            try {
+                // Subscribe to topics for all registered keys (only if topics changed)
+                final List<String> topics = registeredKeys.stream()
+                    .map(key -> getTopicName(key))
+                    .collect(java.util.stream.Collectors.toList());
                 
-                final ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
-                
-                for (final ConsumerRecord<String, String> record : records) {
-                    processMessage(record.topic(), record.value());
+                if (!topics.isEmpty()) {
+                    // Only subscribe if topics have changed
+                    final Set<String> topicsSet = Set.copyOf(topics);
+                    final boolean needsSubscription = !subscribedTopics.equals(topicsSet);
+                    if (needsSubscription) {
+                        consumer.subscribe(topics);
+                        subscribedTopics.clear();
+                        subscribedTopics.addAll(topics);
+                        log.debug("Subscribed to topics: {}", topics);
+                    }
+                    
+                    final ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+                    
+                    for (final ConsumerRecord<String, String> record : records) {
+                        processMessage(record.topic(), record.value());
+                    }
                 }
+            } catch (Exception e) {
+                log.error("Error during message polling", e);
             }
-        } catch (Exception e) {
-            log.error("Error during message polling", e);
         }
     }
     

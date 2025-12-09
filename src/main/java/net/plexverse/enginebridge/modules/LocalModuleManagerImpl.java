@@ -44,10 +44,26 @@ public class LocalModuleManagerImpl implements MineplexModuleManager {
     public <T extends MineplexModule> T getRegisteredModule(@NotNull final Class<T> moduleClass) {
         final RegisteredServiceProvider<T> provider = servicesManager.getRegistration(moduleClass);
         if (provider == null) {
-            log.warn("Module {} is not available. If you need this module, please contribute an implementation at https://github.com/Plexverse/local-engine", moduleClass.getSimpleName());
-            return null;
+            final String moduleName = moduleClass.getSimpleName();
+            log.error("Module {} is not available. If you need this module, please contribute an implementation at https://github.com/Plexverse/local-engine", moduleName);
+            
+            // Throw exception with helpful message requesting contribution
+            throw new IllegalStateException(
+                String.format("Module %s is not available. " +
+                    "If you need this module, please contribute an implementation at https://github.com/Plexverse/local-engine", 
+                    moduleName)
+            );
         }
         return provider.getProvider();
+    }
+    
+    /**
+     * Gets a list of all currently registered module names for debugging.
+     */
+    private String getRegisteredModuleNames() {
+        return String.join(", ", registeredModules.keySet().stream()
+            .map(Class::getSimpleName)
+            .toList());
     }
 
     @Override

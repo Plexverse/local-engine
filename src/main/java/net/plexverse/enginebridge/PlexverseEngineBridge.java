@@ -2,10 +2,24 @@ package net.plexverse.enginebridge;
 
 import com.mineplex.studio.sdk.modules.MineplexModule;
 import com.mineplex.studio.sdk.modules.MineplexModuleManager;
+import com.mineplex.studio.sdk.modules.game.mechanics.afk.PlayerAFKMechanic;
+import com.mineplex.studio.sdk.modules.game.mechanics.legacy.LegacyArmorMechanic;
+import com.mineplex.studio.sdk.modules.game.mechanics.legacy.LegacyCriticalHitMechanic;
+import com.mineplex.studio.sdk.modules.game.mechanics.legacy.LegacyEnchantmentsMechanic;
+import com.mineplex.studio.sdk.modules.game.mechanics.legacy.LegacyEnchantmentTableMechanic;
+import com.mineplex.studio.sdk.modules.game.mechanics.legacy.LegacyEnderPearlMechanic;
+import com.mineplex.studio.sdk.modules.gamestatehelper.GameStateHelperModule;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.plexverse.enginebridge.modules.LocalModuleManagerImpl;
+import net.plexverse.enginebridge.modules.game.LocalGameMechanicFactoryImpl;
 import net.plexverse.enginebridge.modules.game.LocalMineplexGameModuleImpl;
+import net.plexverse.enginebridge.modules.game.mechanics.afk.LocalPlayerAFKMechanic;
+import net.plexverse.enginebridge.modules.game.mechanics.legacy.LocalLegacyArmorMechanic;
+import net.plexverse.enginebridge.modules.game.mechanics.legacy.LocalLegacyCriticalHitMechanic;
+import net.plexverse.enginebridge.modules.game.mechanics.legacy.LocalLegacyEnchantmentsMechanic;
+import net.plexverse.enginebridge.modules.game.mechanics.legacy.LocalLegacyEnchantmentTableMechanic;
+import net.plexverse.enginebridge.modules.game.mechanics.legacy.LocalLegacyEnderPearlMechanic;
 import net.plexverse.enginebridge.util.ModuleScanner;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -62,8 +76,83 @@ public class PlexverseEngineBridge extends JavaPlugin {
             log.warn("Failed to register LocalMineplexGameModule", e);
         }
         
+        // Register GameMechanicFactory early to prevent game setup failures
+        try {
+            final LocalGameMechanicFactoryImpl mechanicFactory = new LocalGameMechanicFactoryImpl(this);
+            moduleManager.registerModule(mechanicFactory);
+            log.info("Registered LocalGameMechanicFactory to prevent game setup errors");
+            
+            // Register local mechanic providers for 1.21.8 compatibility
+            registerLocalMechanics(mechanicFactory);
+        } catch (Exception e) {
+            log.warn("Failed to register LocalGameMechanicFactory", e);
+        }
+        
+        // Register SDK's GameStateHelperModule
+        try {
+            final GameStateHelperModule gameStateHelperModule = new GameStateHelperModule(this);
+            moduleManager.registerModule(gameStateHelperModule);
+            log.info("Registered GameStateHelperModule from SDK");
+        } catch (Exception e) {
+            log.warn("Failed to register GameStateHelperModule", e);
+        }
+        
         // Register local modules
         initializeLocalModules();
+    }
+    
+    /**
+     * Registers local mechanic providers to avoid SDK version compatibility issues.
+     * These mechanics use Entity.isGhost() which doesn't exist in 1.21.8.
+     */
+    private void registerLocalMechanics(final LocalGameMechanicFactoryImpl mechanicFactory) {
+        // Register LocalPlayerAFKMechanic as a provider
+        // The SDK's PlayerAFKMechanicImpl uses Entity.isGhost() which doesn't exist in 1.21.8
+        mechanicFactory.register(
+            PlayerAFKMechanic.class,
+            LocalPlayerAFKMechanic::new
+        );
+        log.info("Registered LocalPlayerAFKMechanic provider for 1.21.8 compatibility");
+        
+        // Register LocalLegacyArmorMechanic as a provider
+        // The SDK's LegacyArmorMechanicImpl uses Entity.isGhost() which doesn't exist in 1.21.8
+        mechanicFactory.register(
+            LegacyArmorMechanic.class,
+            LocalLegacyArmorMechanic::new
+        );
+        log.info("Registered LocalLegacyArmorMechanic provider for 1.21.8 compatibility");
+        
+        // Register LocalLegacyCriticalHitMechanic as a provider
+        // The SDK's LegacyCriticalHitMechanicImpl uses Entity.isGhost() which doesn't exist in 1.21.8
+        mechanicFactory.register(
+            LegacyCriticalHitMechanic.class,
+            LocalLegacyCriticalHitMechanic::new
+        );
+        log.info("Registered LocalLegacyCriticalHitMechanic provider for 1.21.8 compatibility");
+        
+        // Register LocalLegacyEnchantmentsMechanic as a provider
+        // The SDK's LegacyEnchantmentsMechanicImpl uses Entity.isGhost() which doesn't exist in 1.21.8
+        mechanicFactory.register(
+            LegacyEnchantmentsMechanic.class,
+            LocalLegacyEnchantmentsMechanic::new
+        );
+        log.info("Registered LocalLegacyEnchantmentsMechanic provider for 1.21.8 compatibility");
+        
+        // Register LocalLegacyEnchantmentTableMechanic as a provider
+        // The SDK's LegacyEnchantmentTableMechanicImpl uses Entity.isGhost() which doesn't exist in 1.21.8
+        mechanicFactory.register(
+            LegacyEnchantmentTableMechanic.class,
+            LocalLegacyEnchantmentTableMechanic::new
+        );
+        log.info("Registered LocalLegacyEnchantmentTableMechanic provider for 1.21.8 compatibility");
+        
+        // Register LocalLegacyEnderPearlMechanic as a provider
+        // The SDK's LegacyEnderPearlMechanicImpl uses Entity.isGhost() which doesn't exist in 1.21.8
+        mechanicFactory.register(
+            LegacyEnderPearlMechanic.class,
+            LocalLegacyEnderPearlMechanic::new
+        );
+        log.info("Registered LocalLegacyEnderPearlMechanic provider for 1.21.8 compatibility");
     }
     
     /**
@@ -75,9 +164,10 @@ public class PlexverseEngineBridge extends JavaPlugin {
         
         for (final Object module : modules) {
             try {
-                // Skip LocalMineplexGameModuleImpl as it's already registered manually
-                if (module instanceof LocalMineplexGameModuleImpl) {
-                    log.debug("Skipping LocalMineplexGameModuleImpl - already registered manually");
+                // Skip modules that are already registered manually
+                if (module instanceof LocalMineplexGameModuleImpl || 
+                    module instanceof LocalGameMechanicFactoryImpl) {
+                    log.debug("Skipping {} - already registered manually", module.getClass().getSimpleName());
                     continue;
                 }
                 

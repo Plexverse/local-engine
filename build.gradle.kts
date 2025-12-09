@@ -60,6 +60,26 @@ tasks {
                 }
             }
         
+        // Include Jackson modules from SDK dependencies (they're transitive dependencies of the SDK)
+        // This includes all Jackson artifacts that are transitive dependencies
+        project.configurations.compileClasspath.get().resolvedConfiguration.resolvedArtifacts
+            .filter { 
+                val group = it.moduleVersion.id.group
+                val name = it.moduleVersion.id.name
+                // Include all Jackson datatype, module, and dataformat artifacts
+                (group == "com.fasterxml.jackson.datatype") || 
+                (group == "com.fasterxml.jackson.module") ||
+                (group == "com.fasterxml.jackson.dataformat" && name == "jackson-dataformat-yaml")
+            }
+            .forEach { artifact ->
+                if (artifact.file.exists() && artifact.file.extension == "jar") {
+                    from(project.zipTree(artifact.file)) {
+                        include("com/fasterxml/jackson/**")
+                        exclude("META-INF/**")
+                    }
+                }
+            }
+        
         mergeServiceFiles()
         exclude("org/bukkit/**")
         exclude("org/spigotmc/**")

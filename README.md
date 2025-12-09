@@ -21,6 +21,7 @@ For detailed information about the built-in modules and their APIs, see the [Min
 The module signatures match the official Studio Engine SDK, but the implementations differ for local running. See the linked readmes for each feature below for requirements and setup instructions for local use.
 
 - MineplexGameModule
+- [MineplexGameMechanicFactory](src/main/java/net/plexverse/enginebridge/modules/game/README.md) - Game mechanic factory for constructing and managing game mechanics
 - [ResourcePackModule](src/main/java/net/plexverse/enginebridge/modules/resourcepack/README.md) - Local HTTP server for serving resource packs
 - [ChatModule](src/main/java/net/plexverse/enginebridge/modules/chat/README.md) - Chat channel management, filtering, and rendering
 - [WorldModule](src/main/java/net/plexverse/enginebridge/modules/world/README.md) - World creation and management with data points support
