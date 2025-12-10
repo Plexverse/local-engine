@@ -31,7 +31,7 @@ The module signatures match the official Studio Engine SDK, but the implementati
 - LevelModule - using DataStoreModule with basic fake level algorithm
 - [MessagingModule](src/main/java/net/plexverse/enginebridge/modules/messaging/README.md) - Kafka-based inter-server messaging
 - QueuingModule - Local in-memory queue for matchmaking (no proxy support yet)
-- ReadyStateModule - Blocks player login until game state becomes ready (Agones/Kubernetes readiness)
+- ReadyStateModule - Blocks player login until game state becomes ready (Mineplex stg/prod behaviour)
 
 ## Requirements
 
