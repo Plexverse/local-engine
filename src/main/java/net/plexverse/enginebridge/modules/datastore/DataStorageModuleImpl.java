@@ -1,12 +1,22 @@
 package net.plexverse.enginebridge.modules.datastore;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.Version;
+import com.fasterxml.jackson.databind.BeanDescription;
+import com.fasterxml.jackson.databind.DeserializationConfig;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.deser.Deserializers;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -28,6 +38,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
+import org.bson.json.Converter;
+import org.bson.json.JsonMode;
+import org.bson.json.JsonWriterSettings;
+import org.bson.json.StrictJsonWriter;
 import org.bson.types.Binary;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -35,6 +49,12 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -94,15 +114,85 @@ public class DataStorageModuleImpl implements DataStorageModule {
     }
     
     private static JsonMapper.Builder getDefaultObjectMapperBuilder() {
-        return JsonMapper.builder()
+        final JsonMapper.Builder builder = JsonMapper.builder()
                 .addModules(
                         new Jdk8Module(), 
                         new ParameterNamesModule(), 
-                        new JavaTimeModule(), 
                         new MineplexJacksonModule())
                 .serializationInclusion(JsonInclude.Include.NON_NULL)
                 .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
-                .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+                .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
+                // Disable problematic features that cause version incompatibility
+                .disable(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS);
+        
+        // Try to add JavaTimeModule if available (from server's classpath)
+        // We don't bundle it to avoid version incompatibility
+        try {
+            final Class<?> javaTimeModuleClass = Class.forName("com.fasterxml.jackson.datatype.jsr310.JavaTimeModule");
+            final Object javaTimeModule = javaTimeModuleClass.getDeclaredConstructor().newInstance();
+            builder.addModule((Module) javaTimeModule);
+            log.info("JavaTimeModule loaded from server classpath");
+        } catch (ClassNotFoundException e) {
+            // JavaTimeModule not available - add custom Instant deserializer as fallback
+            log.warn("JavaTimeModule not available on classpath, using custom Instant deserializer", e);
+            builder.addModule(new Module() {
+                @Override
+                public String getModuleName() {
+                    return "CustomInstantModule";
+                }
+                
+                @Override
+                public Version version() {
+                    return Version.unknownVersion();
+                }
+                
+                @Override
+                public void setupModule(final Module.SetupContext context) {
+                    context.addDeserializers(new Deserializers.Base() {
+                        @Override
+                        public JsonDeserializer<?> findBeanDeserializer(
+                                final JavaType type,
+                                final DeserializationConfig config,
+                                final BeanDescription beanDesc) {
+                            if (type.getRawClass() == Instant.class) {
+                                return new JsonDeserializer<Instant>() {
+                                    @Override
+                                    public Instant deserialize(final JsonParser p, final DeserializationContext ctxt) throws java.io.IOException {
+                                        final String text = p.getText();
+                                        if (text == null || text.isEmpty()) {
+                                            return null;
+                                        }
+                                        try {
+                                            return Instant.parse(text);
+                                        } catch (Exception ex) {
+                                            throw new InvalidFormatException(
+                                                    p, "Cannot deserialize value of type `java.time.Instant` from String \"" + text + "\": " + ex.getMessage(), 
+                                                    p.getCurrentValue(), Instant.class);
+                                        }
+                                    }
+                                };
+                            }
+                            return null;
+                        }
+                    });
+                }
+                
+                @Override
+                public int hashCode() {
+                    return getModuleName().hashCode();
+                }
+                
+                @Override
+                public boolean equals(final Object o) {
+                    return o instanceof Module && 
+                           ((Module) o).getModuleName().equals(getModuleName());
+                }
+            });
+        } catch (Exception e) {
+            log.error("Failed to load JavaTimeModule or register custom deserializer", e);
+        }
+        
+        return builder;
     }
     
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -151,9 +241,19 @@ public class DataStorageModuleImpl implements DataStorageModule {
             final String collectionName = getCollectionName(data.getClass());
             final String key = getKey(data.getClass(), data);
             
+            // Serialize to JSON string, then parse to Document to get all fields
             final String serialized = getObjectMapper().writeValueAsString(data);
-            final Document document = new Document("_id", key)
-                    .append("data", serialized);
+            final Document dataDocument = Document.parse(serialized);
+            
+            // Remove the key field from the document (we use _id instead)
+            final Field keyField = getKeyField(data.getClass());
+            keyField.setAccessible(true);
+            final String keyFieldName = keyField.getName();
+            dataDocument.remove(keyFieldName);
+            
+            // Create document with _id and all data fields (excluding key field)
+            final Document document = new Document("_id", key);
+            document.putAll(dataDocument);
             
             final MongoCollection<Document> collection = database.getCollection(collectionName);
             collection.replaceOne(
@@ -161,6 +261,7 @@ public class DataStorageModuleImpl implements DataStorageModule {
                     document,
                     new ReplaceOptions().upsert(true)
             );
+            log.info("[DataStorage] Stored structured data: collection={}, key={}", collectionName, key);
         } catch (final Exception e) {
             log.error("Failed to store structured data", e);
         }
@@ -226,26 +327,67 @@ public class DataStorageModuleImpl implements DataStorageModule {
     @NonNull
     public <T extends StorableStructuredData> Optional<T> loadStructuredData(
             @NonNull final Class<T> dataClass, @NonNull final String key) {
+        String json = null;
         try {
             final String collectionName = getCollectionName(dataClass);
+            log.info("[DataStorage] Loading structured data: collection={}, key={}, class={}", 
+                    collectionName, key, dataClass.getSimpleName());
+            
             final MongoCollection<Document> collection = database.getCollection(collectionName);
             
             final Document document = collection.find(new Document("_id", key)).first();
             if (document == null) {
+                log.info("[DataStorage] Document not found: collection={}, key={}", collectionName, key);
                 return Optional.empty();
             }
             
-            final String serialized = document.getString("data");
-            if (serialized == null) {
+            log.info("[DataStorage] Document found: collection={}, key={}, document keys={}", 
+                    collectionName, key, document.keySet());
+            
+            // Create a copy of the document for deserialization
+            final Document dataDocument = new Document(document);
+            
+            // Map _id to the key field name for deserialization
+            final Field keyField = getKeyField(dataClass);
+            keyField.setAccessible(true);
+            final String keyFieldName = keyField.getName();
+            dataDocument.remove("_id");
+            dataDocument.put(keyFieldName, key);
+            
+            // Convert entire MongoDB Document to JSON string, then deserialize
+            // Use custom date converter to produce standard ISO-8601 date strings instead of extended JSON
+            // This avoids JavaTimeModule version incompatibility by letting MongoDB handle date conversion
+            log.info("[DataStorage] Converting document to entity via JSON serialization: collection={}, key={}", 
+                    collectionName, key);
+            final Converter<Long> dateConverter = (value, writer) -> {
+                final String isoDate = Instant.ofEpochMilli(value).toString();
+                writer.writeString(isoDate);
+            };
+            json = dataDocument.toJson(JsonWriterSettings.builder()
+                    .outputMode(JsonMode.RELAXED)
+                    .dateTimeConverter(dateConverter)
+                    .build());
+            log.debug("[DataStorage] Generated JSON (first 500 chars): {}", json != null ? json.substring(0, Math.min(500, json.length())) : "null");
+            // Now we can use the full ObjectMapper - JavaTimeModule will use the server's version
+            // which is compatible with the server's jackson-annotations
+            log.debug("[DataStorage] Attempting to deserialize JSON to class: {}", dataClass.getSimpleName());
+            final T result = getObjectMapper().readValue(json, dataClass);
+            if (result == null) {
+                log.warn("[DataStorage] Deserialization returned null: collection={}, key={}", collectionName, key);
                 return Optional.empty();
             }
             
-            return Optional.ofNullable(getObjectMapper().readValue(serialized, dataClass));
+            log.info("[DataStorage] Successfully loaded: collection={}, key={}, class={}", 
+                    collectionName, key, dataClass.getSimpleName());
+            return Optional.of(result);
         } catch (JsonProcessingException e) {
-            log.warn("Failed to load structured data for key {} and class {}", key, dataClass, e);
+            log.error("[DataStorage] Failed to serialize/deserialize document for key {} and class {}: {}", 
+                    key, dataClass.getSimpleName(), e.getMessage(), e);
+            log.error("[DataStorage] JSON that failed to deserialize: {}", json != null ? json.substring(0, Math.min(500, json.length())) : "null");
             return Optional.empty();
         } catch (final Exception e) {
-            log.error("Failed to load structured data", e);
+            log.error("[DataStorage] Failed to load structured data: collection={}, key={}, class={}", 
+                    getCollectionName(dataClass), key, dataClass.getSimpleName(), e);
             return Optional.empty();
         }
     }
@@ -402,5 +544,6 @@ public class DataStorageModuleImpl implements DataStorageModule {
                 ForkJoinPool.commonPool()
         );
     }
+    
 }
 
