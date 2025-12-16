@@ -6,15 +6,20 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.DeserializationConfig;
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.deser.Deserializers;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.fasterxml.jackson.databind.ser.Serializers;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
@@ -148,6 +153,30 @@ public class DataStorageModuleImpl implements DataStorageModule {
                 
                 @Override
                 public void setupModule(final Module.SetupContext context) {
+                    // Add serializer for Instant
+                    context.addSerializers(new Serializers.Base() {
+                        @Override
+                        public JsonSerializer<?> findSerializer(
+                                final SerializationConfig config,
+                                final JavaType type,
+                                final BeanDescription beanDesc) {
+                            if (type.getRawClass() == Instant.class) {
+                                return new JsonSerializer<Instant>() {
+                                    @Override
+                                    public void serialize(final Instant value, final JsonGenerator gen, final SerializerProvider serializers) throws java.io.IOException {
+                                        if (value == null) {
+                                            gen.writeNull();
+                                        } else {
+                                            gen.writeString(value.toString());
+                                        }
+                                    }
+                                };
+                            }
+                            return null;
+                        }
+                    });
+                    
+                    // Add deserializer for Instant
                     context.addDeserializers(new Deserializers.Base() {
                         @Override
                         public JsonDeserializer<?> findBeanDeserializer(
@@ -189,7 +218,7 @@ public class DataStorageModuleImpl implements DataStorageModule {
                 }
             });
         } catch (Exception e) {
-            log.error("Failed to load JavaTimeModule or register custom deserializer", e);
+            log.error("Failed to load JavaTimeModule or register custom Instant serializer/deserializer", e);
         }
         
         return builder;
