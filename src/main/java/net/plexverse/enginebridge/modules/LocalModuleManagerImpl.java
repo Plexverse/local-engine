@@ -84,8 +84,11 @@ public class LocalModuleManagerImpl implements MineplexModuleManager {
         // Call setup if the instance has a setup method
         try {
             instance.getClass().getMethod("setup").invoke(instance);
-        } catch (Exception e) {
+        } catch (NoSuchMethodException e) {
             // No setup method, that's okay
+        } catch (Exception e) {
+            // Setup method exists but threw an exception - log it
+            log.error("Failed to call setup() on module {}", instance.getClass().getSimpleName(), e);
         }
         
         // Register as event listener if it implements Listener
