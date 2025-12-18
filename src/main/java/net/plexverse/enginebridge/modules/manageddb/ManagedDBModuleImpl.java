@@ -15,6 +15,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Map;
@@ -38,9 +41,45 @@ public class ManagedDBModuleImpl implements ManagedDBModule {
     
     private static final String USERNAME = "local-engine";
     private static final String PASSWORD = "local-engine";
-    private static final int DEFAULT_MONGO_PORT = 27017;
-    private static final int DEFAULT_POSTGRES_PORT = 5432;
-    private static final int DEFAULT_MYSQL_PORT = 3306;
+    private static final int BASE_MONGO_PORT = 27018;  // 27017 is reserved for main mongodb service
+    private static final int BASE_POSTGRES_PORT = 5433;  // 5432 is reserved for main postgres service
+    private static final int BASE_MYSQL_PORT = 3307;  // 3306 is reserved for main mysql service
+    private static final int PORT_RANGE = 100;  // Ports will be BASE_PORT + (hash % PORT_RANGE)
+    
+    /**
+     * Calculate predictable port for a database based on its name.
+     * Uses MD5 hash to ensure consistent port assignment matching the Python script.
+     */
+    private static int getMongoPort(String databaseName) {
+        return BASE_MONGO_PORT + (getMd5Hash(databaseName) % PORT_RANGE);
+    }
+    
+    private static int getPostgresPort(String databaseName) {
+        return BASE_POSTGRES_PORT + (getMd5Hash(databaseName) % PORT_RANGE);
+    }
+    
+    private static int getMysqlPort(String databaseName) {
+        return BASE_MYSQL_PORT + (getMd5Hash(databaseName) % PORT_RANGE);
+    }
+    
+    /**
+     * Calculate MD5 hash of a string and return modulo 100.
+     * Matches the Python script's hashlib.md5() behavior: int(hashlib.md5(...).hexdigest(), 16) % 100
+     */
+    private static int getMd5Hash(String input) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] hashBytes = md.digest(input.getBytes());
+            // Convert to BigInteger (treating as unsigned, like Python's int(hexdigest(), 16))
+            BigInteger bigInt = new BigInteger(1, hashBytes);
+            // Take modulo 100 to match Python: hash_val % 100
+            return bigInt.mod(BigInteger.valueOf(100)).intValue();
+        } catch (NoSuchAlgorithmException e) {
+            // Fallback to hashCode if MD5 is unavailable (shouldn't happen)
+            log.warn("MD5 algorithm not available, falling back to hashCode", e);
+            return Math.abs(input.hashCode()) % PORT_RANGE;
+        }
+    }
     
     private final Map<String, MongoDatabaseConnectionInfo> mongoDatabaseConnectionInfos = new ConcurrentHashMap<>(4);
     private final Map<String, MySQLDatabaseConnectionInfo> mySQLDatabaseConnectionInfos = new ConcurrentHashMap<>(4);
@@ -72,8 +111,10 @@ public class ManagedDBModuleImpl implements ManagedDBModule {
         return CompletableFuture.supplyAsync(() -> {
             return mongoDatabaseConnectionInfos.computeIfAbsent(databaseName, (k) -> {
                 // Build MongoDB connection info for local implementation
+                // Use service name for Docker network communication (internal port 27017)
+                // Published port is calculated predictably but only used for external access
                 return MongoDatabaseConnectionInfo.builder()
-                    .connectionUri(String.format("mongodb://%s:%s@mongo-%s:%d", USERNAME, PASSWORD, databaseName, DEFAULT_MONGO_PORT))
+                    .connectionUri(String.format("mongodb://%s:%s@mongo-%s:27017/%s", USERNAME, PASSWORD, databaseName, databaseName))
                     .schemaName(databaseName)
                     .build();
             });
@@ -87,8 +128,9 @@ public class ManagedDBModuleImpl implements ManagedDBModule {
         return CompletableFuture.supplyAsync(() -> {
             return mySQLDatabaseConnectionInfos.computeIfAbsent(databaseName, (k) -> {
                 // Build MySQL connection info for local implementation
+                // Use service name for Docker network communication (internal port 3306)
                 return MySQLDatabaseConnectionInfo.builder()
-                    .connectionUri(String.format("jdbc:mysql://mysql-%s:%d/%s", databaseName, DEFAULT_MYSQL_PORT, databaseName))
+                    .connectionUri(String.format("jdbc:mysql://mysql-%s:3306/%s", databaseName, databaseName))
                     .username(USERNAME)
                     .password(PASSWORD)
                     .schemaName(databaseName)
@@ -104,8 +146,9 @@ public class ManagedDBModuleImpl implements ManagedDBModule {
         return CompletableFuture.supplyAsync(() -> {
             return postgreSQLDatabaseConnectionInfos.computeIfAbsent(databaseName, (k) -> {
                 // Build PostgreSQL connection info for local implementation
+                // Use service name for Docker network communication (internal port 5432)
                 return PostgreSQLDatabaseConnectionInfo.builder()
-                    .connectionUri(String.format("jdbc:postgresql://postgres-%s:%d/%s", databaseName, DEFAULT_POSTGRES_PORT, databaseName))
+                    .connectionUri(String.format("jdbc:postgresql://postgres-%s:5432/%s", databaseName, databaseName))
                     .username(USERNAME)
                     .password(PASSWORD)
                     .schemaName(databaseName)
