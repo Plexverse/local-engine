@@ -115,6 +115,8 @@ public class ManagedDBModuleImpl implements ManagedDBModule {
                 // Published port is calculated predictably but only used for external access
                 return MongoDatabaseConnectionInfo.builder()
                     .id(databaseName)
+                    .databaseName(databaseName)
+                    .namespaceId(databaseName)
                     .connectionUri(String.format("mongodb://%s:%s@mongo-%s:27017/%s", USERNAME, PASSWORD, databaseName, databaseName))
                     .schemaName(databaseName)
                     .build();
