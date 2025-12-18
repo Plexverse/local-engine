@@ -54,6 +54,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
@@ -280,6 +281,10 @@ public class DataStorageModuleImpl implements DataStorageModule {
             final String keyFieldName = keyField.getName();
             dataDocument.remove(keyFieldName);
             
+            // Ensure long fields are stored as int64 (not int32)
+            // MongoDB's Document.parse() may convert small numbers to int32
+            ensureLongFieldsAsInt64(dataDocument, data.getClass());
+            
             // Create document with _id and all data fields (excluding key field)
             final Document document = new Document("_id", key);
             document.putAll(dataDocument);
@@ -293,6 +298,41 @@ public class DataStorageModuleImpl implements DataStorageModule {
             log.info("[DataStorage] Stored structured data: collection={}, key={}", collectionName, key);
         } catch (final Exception e) {
             log.error("Failed to store structured data", e);
+        }
+    }
+    
+    /**
+     * Ensures that long fields in the entity are stored as int64 (Long) in the MongoDB document,
+     * not int32 (Integer). MongoDB's Document.parse() may convert small numbers to int32.
+     * 
+     * @param document the MongoDB document to fix
+     * @param entityClass the entity class to check for long fields
+     */
+    private void ensureLongFieldsAsInt64(@NonNull final Document document, @NonNull final Class<?> entityClass) {
+        for (final Field field : entityClass.getDeclaredFields()) {
+            // Skip transient and static fields
+            if (Modifier.isTransient(field.getModifiers()) || 
+                Modifier.isStatic(field.getModifiers())) {
+                continue;
+            }
+            
+            // Check if field is long or Long
+            if (field.getType() == long.class || field.getType() == Long.class) {
+                final String fieldName = field.getName();
+                final Object value = document.get(fieldName);
+                
+                // If the value is an Integer (int32), convert it to Long (int64)
+                if (value instanceof Integer) {
+                    document.put(fieldName, ((Integer) value).longValue());
+                    log.debug("[DataStorage] Converted field {} from int32 to int64: {}", fieldName, value);
+                }
+            }
+        }
+        
+        // Also check parent class if it exists
+        final Class<?> superclass = entityClass.getSuperclass();
+        if (superclass != null && superclass != Object.class) {
+            ensureLongFieldsAsInt64(document, superclass);
         }
     }
     

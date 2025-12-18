@@ -5,6 +5,7 @@ import com.mineplex.studio.sdk.modules.manageddb.ManagedDBModule;
 import com.mineplex.studio.sdk.modules.manageddb.models.MongoDatabaseConnectionInfo;
 import com.mineplex.studio.sdk.modules.manageddb.models.MySQLDatabaseConnectionInfo;
 import com.mineplex.studio.sdk.modules.manageddb.models.PostgreSQLDatabaseConnectionInfo;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 import com.google.common.base.Preconditions;
@@ -85,6 +86,7 @@ public class ManagedDBModuleImpl implements ManagedDBModule {
     private final Map<String, MySQLDatabaseConnectionInfo> mySQLDatabaseConnectionInfos = new ConcurrentHashMap<>(4);
     private final Map<String, PostgreSQLDatabaseConnectionInfo> postgreSQLDatabaseConnectionInfos = new ConcurrentHashMap<>(4);
     private final Map<String, HikariDataSource> existingHikariPools = new ConcurrentHashMap<>(4);
+    private final Map<String, MongoClient> existingMongoClients = new ConcurrentHashMap<>(4);
     private final Map<String, MongoDatabase> existingMongoPools = new ConcurrentHashMap<>(4);
     private final JavaPlugin plugin;
     
@@ -100,6 +102,8 @@ public class ManagedDBModuleImpl implements ManagedDBModule {
         postgreSQLDatabaseConnectionInfos.clear();
         existingHikariPools.values().forEach(HikariDataSource::close);
         existingHikariPools.clear();
+        existingMongoClients.values().forEach(MongoClient::close);
+        existingMongoClients.clear();
         existingMongoPools.clear();
         log.info("ManagedDBModule torn down");
     }
@@ -167,7 +171,11 @@ public class ManagedDBModuleImpl implements ManagedDBModule {
         return existingMongoPools.computeIfAbsent(databaseName, (k) -> {
             MongoDatabaseConnectionInfo mongoDatabaseConnectionInfo = getMongoDatabaseConnectionInfo(databaseName).join();
             String connectionURI = mongoDatabaseConnectionInfo.getConnectionUri();
-            return MongoClients.create(connectionURI).getDatabase(mongoDatabaseConnectionInfo.getSchemaName());
+            // Cache MongoClient per database to reuse connections
+            MongoClient mongoClient = existingMongoClients.computeIfAbsent(databaseName, (key) -> {
+                return MongoClients.create(connectionURI);
+            });
+            return mongoClient.getDatabase(mongoDatabaseConnectionInfo.getSchemaName());
         });
     }
     
