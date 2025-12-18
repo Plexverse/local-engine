@@ -4,7 +4,7 @@ plugins {
     java
     `java-library`
     `maven-publish`
-    id("com.mineplex.sdk.plugin") version "1.21.9"
+    id("com.mineplex.sdk.plugin") version "1.21.10"
     id("com.gradleup.shadow") version "9.1.0"
 }
 
