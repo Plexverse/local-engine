@@ -114,6 +114,7 @@ public class ManagedDBModuleImpl implements ManagedDBModule {
                 // Use service name for Docker network communication (internal port 27017)
                 // Published port is calculated predictably but only used for external access
                 return MongoDatabaseConnectionInfo.builder()
+                    .id(databaseName)
                     .connectionUri(String.format("mongodb://%s:%s@mongo-%s:27017/%s", USERNAME, PASSWORD, databaseName, databaseName))
                     .schemaName(databaseName)
                     .build();
