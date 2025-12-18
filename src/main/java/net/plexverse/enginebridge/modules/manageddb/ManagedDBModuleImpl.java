@@ -117,7 +117,7 @@ public class ManagedDBModuleImpl implements ManagedDBModule {
                     .id(databaseName)
                     .databaseName(databaseName)
                     .namespaceId(databaseName)
-                    .connectionUri(String.format("mongodb://%s:%s@mongo-%s:27017/%s", USERNAME, PASSWORD, databaseName, databaseName))
+                    .connectionUri(String.format("mongodb://%s:%s@mongo-%s:27017/%s?authSource=admin", USERNAME, PASSWORD, databaseName, databaseName))
                     .schemaName(databaseName)
                     .build();
             });
