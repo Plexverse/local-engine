@@ -39,7 +39,7 @@ dependencies {
 }
 
 group = "net.plexverse.enginebridge"
-version = "1.2.5"
+version = "1.2.6"
 description = "engine-bridge"
 
 tasks {
