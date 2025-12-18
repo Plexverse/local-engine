@@ -2,7 +2,7 @@
 </br>
 </br>
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.1.3-blue?style=flat-square)
 
 A bridge plugin for Mineplex's Studio Engine that allows for local running. This plugin implements Mineplex's Studio Engine's main modules but enables local development and testing without requiring the full Studio Engine infrastructure.
 
