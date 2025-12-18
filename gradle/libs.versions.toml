@@ -5,15 +5,23 @@ kafka-clients = "3.7.0"
 jackson-yaml = "2.16.1"
 junit-jupiter = "5.10.0"
 mockito = "5.5.0"
+postgresql = "42.7.1"
+mysql = "8.0.33"
+mineplex-bom = "1.0.96"
+hikaricp = "5.1.0"
 
 [libraries]
 mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version.ref = "mongodb-driver" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka-clients" }
 jackson-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson-yaml" }
+postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
+mysql = { module = "com.mysql:mysql-connector-j", version.ref = "mysql" }
+hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
+mineplex-bom = { module = "com.mineplex.studio:bom-public", version.ref = "mineplex-bom" }
 
 [plugins]
 
